@@ -164,20 +164,20 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelR
  
         switch(tempUnit) {
             case ["C","c"]:
-				if (tempOffset) {
+		if (tempOffset) {
                 	def offset = tempOffset as int
-		        	map.value = value + offset as int
+		       	map.value = value + offset as int
                 }
                 else {
                 	map.value = value as int
                 }    
                 map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
-				break
+		break
                 
             case ["F","f"]:
             	if (tempOffset) {
                 	def offset = tempOffset as int
-		        	map.value = c2f(value) + offset as int
+		        map.value = c2f(value) + offset as int
                 }
                 else {
                 	map.value = c2f(value) as int
@@ -188,14 +188,14 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelR
             default:
             	if (tempOffset) {
             	   	def offset = tempOffset as int
-		        	map.value = c2f(value) + offset as int
+		        map.value = c2f(value) + offset as int
                 }
                 else {
            	    	map.value = c2f(value) as int
                 }    
                 map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
                 break    
-		}		
+	}		
     }
     map
 }
