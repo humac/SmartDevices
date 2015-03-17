@@ -7,12 +7,15 @@
  *    you have to open the Motion Sensor and leave it open for a few seconds and then close it.
  *    This triggers the forced Wake up so that the settings can take effect immediately.
  *
- *  Author: FlorianZ,Kranasian
- *  Date: 2014-11-26
+ *  Author: FlorianZ,Kranasian, Humac
+ *  Date: 2015-03-17
  */
 preferences {
-    input("inactivityTimeout", "number", title: "Inactivity Timeout",
-          description: "Number of minutes after movement is gone before its reported inactive by the sensor.")
+    input "inactivityTimeout", "number", title: "Inactivity Timeout", description: "Number of minutes after movement is gone before its reported inactive by the sensor."
+	input description: "This feature allows you to correct any temperature variations by selecting an offset. Ex: If your sensor consistently reports a temp that's 5 degrees too warm, you'd enter \"-5\". If 3 degrees too cold, enter \"+3\".", displayDuringSetup: false, type: "paragraph", element: "paragraph"
+	input "tempOffset", "number", title: "Temperature Offset", description: "Adjust temperature by this many degrees", range: "*..*", displayDuringSetup: false
+    input description: "This feature allows you to change the temperature Unit. If left blank or anything else is typed the default is F.", displayDuringSetup: false, type: "paragraph", element: "paragraph" 
+    input "tempUnit", "string", title: "Celsius or Fahrenheit", description: "Temperature Unit (Type C or F)", displayDuringSetup: false
 }
 
 metadata {
@@ -41,22 +44,28 @@ metadata {
             state("inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff")
         }
 
-        // XXX: Add a setting for the desired temperature unit (C or F).
-        //      How to change the valueTile's background color scale based
-        //      on the set unit?
-
         valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
-            state "temperature", label:'${currentValue}°', unit:"°F",
+            state "temperature", label:'${currentValue}°',
             backgroundColors:[
-                [value: 31, color: "#153591"],
-                [value: 44, color: "#1e9cbb"],
-                [value: 59, color: "#90d2a7"],
-                [value: 74, color: "#44b621"],
-                [value: 84, color: "#f1d801"],
-                [value: 95, color: "#d04e00"],
-                [value: 96, color: "#bc2323"]
-            ]
+                // Celsius Color Range
+				[value: 0, color: "#153591"],
+				[value: 7, color: "#1e9cbb"],
+				[value: 15, color: "#90d2a7"],
+				[value: 23, color: "#44b621"],
+				[value: 29, color: "#f1d801"],
+				[value: 33, color: "#d04e00"],
+				[value: 36, color: "#bc2323"],
+				// Fahrenheit Color Range
+				[value: 40, color: "#153591"],
+				[value: 44, color: "#1e9cbb"],
+				[value: 59, color: "#90d2a7"],
+				[value: 74, color: "#44b621"],
+				[value: 84, color: "#f1d801"],
+				[value: 92, color: "#d04e00"],
+				[value: 96, color: "#bc2323"]
+			]
         }
+        
         valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat") {
             state "battery", label:'${currentValue}% battery', unit:"%"
         }
@@ -146,22 +155,49 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelReport cmd) {
     def map = [:]
     if (cmd.sensorType == 1) {
-        map.name = "temperature"
-
-        // If the sensor returns the temperature value in degrees centigrade,
-        // convert to degrees Fahrenheit. Also, apply a basic low-pass filter
-        // to the scaled sensor value input.
-        def filteredSensorValue = filterSensorValue(cmd.scaledSensorValue)
-        if (cmd.scale == 1) {
-            map.value = filteredSensorValue as String
-            map.unit = "F"
-        } else {
-            map.value = c2f(filteredSensorValue) as String
-            map.unit = "F"
-        }
-        map.descriptionText = "${device.displayName} temperature is ${map.value} ${map.unit}."
+        def cmdScale = cmd.scale == 1 ? "F" : "C"
+        def preValue = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)
+        def filteredSensorValue = filterSensorValue(preValue)
+        def value = filteredSensorValue
+        map.unit = tempUnit
+    	map.name = "temperature"
+ 
+        switch(tempUnit) {
+            case ["C","c"]:
+				if (tempOffset) {
+                	def offset = tempOffset as int
+		        	map.value = value + offset as int
+                }
+                else {
+                	map.value = value as int
+                }    
+                map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
+				break
+                
+            case ["F","f"]:
+            	if (tempOffset) {
+                	def offset = tempOffset as int
+		        	map.value = c2f(value) + offset as int
+                }
+                else {
+                	map.value = c2f(value) as int
+                }    
+                map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
+                break
+            
+            default:
+            	if (tempOffset) {
+            	   	def offset = tempOffset as int
+		        	map.value = c2f(value) + offset as int
+                }
+                else {
+           	    	map.value = c2f(value) as int
+                }    
+                map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
+                break    
+		}		
     }
-    return map
+    map
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
