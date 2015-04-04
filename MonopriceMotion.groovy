@@ -29,15 +29,37 @@ metadata {
     }
 
     simulator {
-        status "inactive": "command: 2001, payload: 00"
-        status "active": "command: 2001, payload: FF"
+			// messages the device returns in response to commands it receives
+			status "motion (basic)"     : "command: 2001, payload: FF"
+			status "no motion (basic)"  : "command: 2001, payload: 00"
+			status "motion (binary)"    : "command: 3003, payload: FF"
+			status "no motion (binary)" : "command: 3003, payload: 00"
 
-        for (int i = 0; i <= 100; i += 20) {
-            status "temperature ${i}F": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
-                scaledSensorValue: i, precision: 1, sensorType: 1, scale: 1).incomingMessage()
-        }
-    }
+			for (int i = 0; i <= 100; i += 20) {
+				status "temperature ${i}F": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
+					scaledSensorValue: i, precision: 1, sensorType: 1, scale: 1).incomingMessage()
+			}
 
+			for (int i = 0; i <= 100; i += 20) {
+				status "humidity ${i}%": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
+					scaledSensorValue: i, precision: 0, sensorType: 5).incomingMessage()
+			}
+
+			for (int i = 0; i <= 100; i += 20) {
+				status "luminance ${i} lux": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
+					scaledSensorValue: i, precision: 0, sensorType: 3).incomingMessage()
+			}
+			for (int i = 200; i <= 1000; i += 200) {
+				status "luminance ${i} lux": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
+					scaledSensorValue: i, precision: 0, sensorType: 3).incomingMessage()
+			}
+
+			for (int i = 0; i <= 100; i += 20) {
+				status "battery ${i}%": new physicalgraph.zwave.Zwave().batteryV1.batteryReport(
+					batteryLevel: i).incomingMessage()
+			}
+		}
+        
     tiles {
         standardTile("motion", "device.motion", width: 1, height: 1) {
             state("active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0")
@@ -77,21 +99,7 @@ metadata {
 def c2f(value) {
     // Given a value in degrees centigrade, return degrees Fahrenheit
 
-    (value * 9/5 + 32) as Integer
-}
-
-def filterSensorValue(value) {
-    // The temperature reading reported often quickly bounces between two values,
-    // adding a lot of noise in the activity log. In order to filter out the
-    // noise, a basic low pass filter is applied below.
-
-    def maxHistory = 2
-    if (!state.history) {
-        state.history = []
-    }
-    state.history << value.toInteger()
-    state.history = state.history.drop(state.history.size() - maxHistory)
-    return (state.history.sum() / state.history.size()) as Integer
+    (value * 9/5 + 32) as float
 }
 
 def parse(String description) {
@@ -157,42 +165,44 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelR
     if (cmd.sensorType == 1) {
         def cmdScale = cmd.scale == 1 ? "F" : "C"
         def preValue = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)
-        def filteredSensorValue = filterSensorValue(preValue)
-        def value = filteredSensorValue
+        def value = preValue as float
         map.unit = tempUnit
     	map.name = "temperature"
  
         switch(tempUnit) {
             case ["C","c"]:
-		if (tempOffset) {
-                	def offset = tempOffset as int
-		       	map.value = value + offset as int
+				if (tempOffset) {
+                	def offset = tempOffset as float
+		       		map.value = value + offset as float
                 }
                 else {
-                	map.value = value as int
-                }    
+                	map.value = value as float
+                }  
+                map.value = map.value.round()
                 map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
-		break
+			break
                 
             case ["F","f"]:
             	if (tempOffset) {
-                	def offset = tempOffset as int
-		        map.value = c2f(value) + offset as int
+                	def offset = tempOffset as float
+		        	map.value = c2f(value) + offset as float
                 }
                 else {
-                	map.value = c2f(value) as int
+                	map.value = c2f(value) as float
                 }    
+                map.value = map.value.round()
                 map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
                 break
             
             default:
             	if (tempOffset) {
-            	   	def offset = tempOffset as int
-		        map.value = c2f(value) + offset as int
+            	   	def offset = tempOffset as float
+		        	map.value = c2f(value) + offset as float
                 }
                 else {
-           	    	map.value = c2f(value) as int
+           	    	map.value = c2f(value) as float
                 }    
+                map.value = map.value.round()
                 map.descriptionText = "${device.displayName} temperature is ${map.value} °${map.unit}."
                 break    
 	}		
