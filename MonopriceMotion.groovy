@@ -39,21 +39,6 @@ metadata {
 				status "temperature ${i}F": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
 					scaledSensorValue: i, precision: 1, sensorType: 1, scale: 1).incomingMessage()
 			}
-
-			for (int i = 0; i <= 100; i += 20) {
-				status "humidity ${i}%": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
-					scaledSensorValue: i, precision: 0, sensorType: 5).incomingMessage()
-			}
-
-			for (int i = 0; i <= 100; i += 20) {
-				status "luminance ${i} lux": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
-					scaledSensorValue: i, precision: 0, sensorType: 3).incomingMessage()
-			}
-			for (int i = 200; i <= 1000; i += 200) {
-				status "luminance ${i} lux": new physicalgraph.zwave.Zwave().sensorMultilevelV2.sensorMultilevelReport(
-					scaledSensorValue: i, precision: 0, sensorType: 3).incomingMessage()
-			}
-
 			for (int i = 0; i <= 100; i += 20) {
 				status "battery ${i}%": new physicalgraph.zwave.Zwave().batteryV1.batteryReport(
 					batteryLevel: i).incomingMessage()
